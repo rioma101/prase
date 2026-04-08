@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>League Rang (Riot API)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text: #e2e8f0;
+      --muted: #cbd5e1;
+      --accent: #38bdf8;
+      --btn-text: #05203a;
+    }
+    body {
+      font-family: Arial;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      transition: background 220ms ease, color 220ms ease;
+    }
+    .card {
+      background: var(--card-bg);
+      padding: 25px;
+      border-radius: 12px;
+      text-align: center;
+      width: min(560px, 92vw);
+      box-shadow: 0 18px 40px rgba(2, 8, 23, 0.2);
+      transition: background 220ms ease;
+    }
+    .rank {
+      margin-top: 15px;
+      font-size: 22px;
+      color: var(--accent);
+    }
+    .wins {
+      margin-top: 14px;
+      font-size: 16px;
+      color: var(--muted);
+      transition: transform 220ms ease, color 220ms ease, text-shadow 220ms ease;
+    }
+    .pig-wrap {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      perspective: 900px;
+    }
+    .pig {
+      width: min(360px, 85vw);
+      animation: spinX 6s linear infinite;
+      transform-origin: center center;
+      transform-style: preserve-3d;
+      backface-visibility: visible;
+      filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.35));
+    }
+    .pig.still {
+      animation: none;
+      transform: rotateX(0deg);
+    }
+    .fire-zone {
+      margin-top: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: end;
+      min-height: 92px;
+    }
+    .fire {
+      --heat: 0;
+      position: relative;
+      width: 94px;
+      height: 92px;
+      transform-origin: center bottom;
+      animation: flameSway 0.52s ease-in-out infinite alternate;
+      transform: scale(calc(0.8 + (0.92 * var(--heat))));
+      filter: saturate(calc(0.95 + (0.7 * var(--heat))));
+      transition: transform 250ms ease, filter 250ms ease, box-shadow 250ms ease, opacity 280ms ease;
+    }
+    .fire-glow {
+      position: absolute;
+      left: 50%;
+      bottom: 2px;
+      transform: translateX(-50%);
+      width: 84px;
+      height: 34px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(255, 205, 120, 0.9) 0%, rgba(255, 120, 0, 0.5) 45%, rgba(255, 42, 0, 0.1) 72%, rgba(255, 42, 0, 0) 100%);
+      box-shadow:
+        0 0 calc(22px + (28px * var(--heat))) rgba(255, 150, 0, calc(0.42 + (0.3 * var(--heat)))),
+        0 0 calc(54px + (74px * var(--heat))) rgba(255, 64, 0, calc(0.14 + (0.25 * var(--heat))));
+      animation: glowPulse 0.45s ease-in-out infinite alternate;
+    }
+    .flame {
+      position: absolute;
+      left: 50%;
+      bottom: 14px;
+      transform-origin: center bottom;
+      border-radius: 55% 45% 58% 42% / 74% 72% 28% 26%;
+      clip-path: polygon(50% 0%, 64% 15%, 75% 31%, 84% 52%, 82% 74%, 69% 89%, 50% 100%, 30% 89%, 18% 74%, 16% 52%, 25% 31%, 36% 15%);
+    }
+    .flame.outer {
+      width: 72px;
+      height: 82px;
+      margin-left: -36px;
+      background: radial-gradient(ellipse at 50% 76%, #ffe5a7 7%, #ffb12b 40%, #ff6f1b 70%, #e12900 100%);
+      animation: outerFlame 0.42s ease-in-out infinite alternate;
+    }
+    .flame.mid {
+      width: 46px;
+      height: 58px;
+      margin-left: -23px;
+      bottom: 22px;
+      background: radial-gradient(ellipse at 50% 78%, #fff6c8 5%, #ffd469 44%, #ff8a2e 82%, rgba(255, 138, 46, 0) 100%);
+      animation: midFlame 0.36s ease-in-out infinite alternate;
+    }
+    .flame.core {
+      width: 24px;
+      height: 34px;
+      margin-left: -12px;
+      bottom: 29px;
+      background: radial-gradient(ellipse at 50% 84%, #ffffff 10%, #fff2ba 56%, rgba(255, 242, 186, 0) 100%);
+      animation: coreFlame 0.32s ease-in-out infinite alternate;
+    }
+    .flame.side-left,
+    .flame.side-right {
+      width: 20px;
+      height: 32px;
+      bottom: 26px;
+      background: radial-gradient(ellipse at 50% 84%, #ffd57d 16%, #ff8c28 68%, rgba(255, 140, 40, 0) 100%);
+      animation: sideFlame 0.31s ease-in-out infinite alternate;
+    }
+    .flame.side-left {
+      margin-left: -37px;
+      transform: rotate(-13deg);
+    }
+    .flame.side-right {
+      margin-left: 17px;
+      transform: rotate(13deg);
+    }
+    .fire.out {
+      opacity: 0;
+      transform: scale(0.2);
+      animation: none;
+      filter: saturate(0.6);
+    }
+    .congrats {
+      margin-top: 10px;
+      font-size: 18px;
+      color: #fbbf24;
+      text-shadow: 0 0 12px rgba(251, 191, 36, 0.45);
+      display: none;
+    }
+    .congrats.show {
+      display: block;
+    }
+    @keyframes spinX {
+      from { transform: rotateX(0deg); }
+      to { transform: rotateX(360deg); }
+    }
+    @keyframes flameSway {
+      from { transform: translateY(0px) scale(calc(0.8 + (0.92 * var(--heat)))) rotate(-1deg); }
+      to { transform: translateY(-2px) scale(calc(0.8 + (0.92 * var(--heat)))) rotate(1.5deg); }
+    }
+    @keyframes glowPulse {
+      from { transform: translateX(-50%) scale(0.96); opacity: 0.82; }
+      to { transform: translateX(-50%) scale(1.05); opacity: 1; }
+    }
+    @keyframes outerFlame {
+      from { transform: translateY(0px) scaleY(0.96) rotate(-2deg); }
+      to { transform: translateY(-5px) scaleY(1.16) rotate(3deg); }
+    }
+    @keyframes midFlame {
+      from { transform: translateY(0px) scale(0.95) rotate(2deg); }
+      to { transform: translateY(-6px) scale(1.14) rotate(-2deg); }
+    }
+    @keyframes coreFlame {
+      from { transform: translateY(0px) scale(0.92); opacity: 0.82; }
+      to { transform: translateY(-7px) scale(1.18); opacity: 1; }
+    }
+    @keyframes sideFlame {
+      from { transform: scale(0.92) translateY(0px); opacity: 0.68; }
+      to { transform: scale(1.12) translateY(-4px); opacity: 0.98; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>FRANE TENTE</h2>
+  <div id="result" class="rank">Učitavanje...</div>
+  <div class="pig-wrap">
+    <img
+      id="pigImage"
+      class="pig"
+      src="./assets/roasted-pig.png"
+      alt="Rotirajući pečeni odojak"
+    />
+  </div>
+  <div class="fire-zone">
+    <div id="fire" class="fire">
+      <div class="fire-glow"></div>
+      <div class="flame outer"></div>
+      <div class="flame mid"></div>
+      <div class="flame side-left"></div>
+      <div class="flame side-right"></div>
+      <div class="flame core"></div>
+    </div>
+  </div>
+  <div id="winsToMaster" class="wins">Računam pobjede do Mastera...</div>
+  <div id="congratsText" class="congrats">Cestitke! Stigao si do Master ranga!</div>
+</div>
+
+<script>
+const API_KEY = "RGAPI-1bfffcac-ce3f-4860-9a72-f2ba35957d6a";
+const PUUID = "iuLuDt_n8oPGDjdqJhzUx7wTNvIIU5l2uFwpHqRwLLw4v_bkVcGjtG5dq6ee7VjzsOCdkMGZNNbAnw";
+const RANK_TO_NUMBER = { "IV": 4, "III": 3, "II": 2, "I": 1 };
+
+function setHeatLevel(remainingLp) {
+  const fire = document.getElementById("fire");
+  const winsText = document.getElementById("winsToMaster");
+  const remainingWins = Math.max(0, remainingLp / 20);
+  // 10 pobjeda je puna vatra, 5 pobjeda je oko pola snage.
+  const heat = Math.min(1, remainingWins / 10);
+  fire.style.setProperty("--heat", heat.toFixed(2));
+
+  const textScale = 1 + (0.16 * heat);
+  const hue = 210 - (200 * heat);
+  const lightness = 62 - (18 * heat);
+  winsText.style.transform = `scale(${textScale.toFixed(3)})`;
+  winsText.style.color = `hsl(${hue.toFixed(0)} 90% ${lightness.toFixed(0)}%)`;
+  winsText.style.textShadow = `0 0 ${Math.round(6 + heat * 20)}px rgba(255, 80, 0, ${(0.2 + heat * 0.45).toFixed(2)})`;
+}
+
+function setFireOut(isOut) {
+  const fire = document.getElementById("fire");
+  fire.classList.toggle("out", isOut);
+}
+
+function setMasterState(isMaster) {
+  const pigImage = document.getElementById("pigImage");
+  const congratsText = document.getElementById("congratsText");
+  if (isMaster) {
+    pigImage.classList.add("still");
+    congratsText.classList.add("show");
+    setFireOut(true);
+  } else {
+    pigImage.classList.remove("still");
+    congratsText.classList.remove("show");
+    setFireOut(false);
+  }
+}
+
+function calculateWinsToMaster(tier, rank, lp) {
+  if (tier !== "DIAMOND") {
+    return {
+      text: "Formula za Master vrijedi samo od Diamond ranga.",
+      remainingLp: 0
+    };
+  }
+
+  const rankNumber = RANK_TO_NUMBER[rank];
+  if (!rankNumber && rankNumber !== 1) {
+    return {
+      text: "Nepoznata Diamond podjela.",
+      remainingLp: 0
+    };
+  }
+
+  const remainingLp = ((rankNumber - 1) * 100) + (100 - lp);
+  const winsNeeded = Math.ceil(Math.max(0, remainingLp) / 20);
+  return {
+    text: `${winsNeeded} pobjeda do Mastera (${remainingLp} LP).`,
+    remainingLp
+  };
+}
+
+async function getRank() {
+  const result = document.getElementById("result");
+  const winsToMaster = document.getElementById("winsToMaster");
+  result.innerText = "Učitavanje...";
+  winsToMaster.innerText = "Računam pobjede do Mastera...";
+  setMasterState(false);
+
+  try {
+    const res = await fetch(
+      `https://eun1.api.riotgames.com/lol/league/v4/entries/by-puuid/${PUUID}`,
+      {
+        headers: {
+          "X-Riot-Token": API_KEY
+        }
+      }
+    );
+
+    const data = await res.json();
+
+    if (!data.length) {
+      result.innerText = "Bez ranga";
+      winsToMaster.innerText = "Nema podataka za izračun pobjeda.";
+      setHeatLevel(0);
+      return;
+    }
+
+    // Pronađi Solo Queue
+    const solo = data.find(q => q.queueType === "RANKED_SOLO_5x5");
+
+    if (!solo) {
+      result.innerText = "Nema Solo Queue ranga";
+      winsToMaster.innerText = "Nema Solo Queue podataka za izračun pobjeda.";
+      setHeatLevel(0);
+      return;
+    }
+
+    result.innerText = `${solo.tier} ${solo.rank} (${solo.leaguePoints} LP)`;
+
+    if (solo.tier === "MASTER") {
+      winsToMaster.innerText = "Master rang postignut!";
+      setHeatLevel(0);
+      setMasterState(true);
+      return;
+    }
+
+    const calc = calculateWinsToMaster(solo.tier, solo.rank, solo.leaguePoints);
+    winsToMaster.innerText = calc.text;
+    setHeatLevel(calc.remainingLp);
+  } catch (err) {
+    console.error(err);
+    result.innerText = "Greška pri dohvaćanju podataka";
+    winsToMaster.innerText = "Nije moguće izračunati pobjede (dohvat nije uspio).";
+    setHeatLevel(0);
+  }
+}
+
+window.addEventListener("DOMContentLoaded", getRank);
+</script>
+
+</body>
+</html>
